@@ -8,8 +8,13 @@
 import os
 import argparse
 
-parser = argparse.ArgumentParser(description="Move cards to genproductions directory.")
-parser.add_argument('--run', choices=['Run3', 'Run2UL'], required=True, help="Era: Run3 or Run2UL")
+def normalize_run(value):
+    val_lower = str(value).lower()
+    if   val_lower in ['run3', '3']:           return 'Run3'
+    elif val_lower in ['run2ul', 'run2', '2']: return 'Run2UL'
+    return value
+parser = argparse.ArgumentParser(description="Generate VLL MadGraph cards.")
+parser.add_argument('--run', type=normalize_run, required=True, help="Era: Run3 or Run2UL")
 args = parser.parse_args()
 
 run = args.run

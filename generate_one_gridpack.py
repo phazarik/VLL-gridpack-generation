@@ -15,17 +15,14 @@ from datetime import timedelta
 def check_environment(scram_arch, cmssw_version):
     print(f"\033[93m\n==> Checking environment and CMSSW release...\033[0m")
     
-    # 1. Verify Host OS matches SCRAM_ARCH
+    ##. Verify Host OS matches SCRAM_ARCH
     req_os = scram_arch.split('_')[0]
     try:
-        with open('/etc/os-release', 'r') as f:
-            os_release = f.read()
-            
-        if 'VERSION_ID="9' in os_release or 'VERSION="9' in os_release: host_os = 'el9'
+        with open('/etc/os-release', 'r') as f: os_release = f.read()      
+        if   'VERSION_ID="9' in os_release or 'VERSION="9' in os_release: host_os = 'el9'
         elif 'VERSION_ID="8' in os_release or 'VERSION="8' in os_release: host_os = 'el8'
         elif 'VERSION_ID="7' in os_release or 'VERSION="7' in os_release: host_os = 'slc7'
         else: host_os = 'unknown'
-
         if req_os != host_os and host_os != 'unknown':
             print(f"\033[31m!! ERROR: OS mismatch! You are trying to use SCRAM_ARCH '{req_os}' on a host with '{host_os}'.\033[0m")
             print(f"\033[33m   Please start a container (e.g., run `cmssw-{req_os}`) or log into a compatible machine (e.g., lxplus8).\033[0m")
@@ -33,20 +30,28 @@ def check_environment(scram_arch, cmssw_version):
     except Exception as e:
         print(f"\033[33m>> Warning: Could not verify host OS compatibility ({e}). Proceeding anyway...\033[0m")
 
-    # 2. Verify CMSSW release exists for the given SCRAM_ARCH in CVMFS
+    ## Verify CMSSW release exists for the given SCRAM_ARCH in CVMFS
     cmssw_path = f"/cvmfs/cms.cern.ch/{scram_arch}/cms/cmssw/{cmssw_version}"
     if not os.path.exists(cmssw_path):
         print(f"\033[31m!! ERROR: Release {cmssw_version} is not available for architecture {scram_arch}.\033[0m")
         print(f"\033[33m   Checked path: {cmssw_path}\033[0m")
         exit(1)
-        
+       
     print(f"\033[92m>> Environment checks passed. OS is compatible and CMSSW release found.\033[0m")
 
-parser = argparse.ArgumentParser(description="Generate a single VLL gridpack.")
+#---------------------------------------------------------------------------------------------
+## Handle arguments
+def normalize_run(value):
+    val_lower = str(value).lower()
+    if   val_lower in ['run3', '3']:           return 'Run3'
+    elif val_lower in ['run2ul', 'run2', '2']: return 'Run2UL'
+    return value
+parser = argparse.ArgumentParser(description="Generate VLL MadGraph cards.")
+parser.add_argument('--run', type=normalize_run, required=True, help="Era: Run3 or Run2UL")
 parser.add_argument('--name', required=True, help='Name of the gridpack (e.g. VLLS_ele_M115)')
-parser.add_argument('--run', choices=['Run3', 'Run2UL'], required=True, help='Run era: Run3 or Run2UL')
 parser.add_argument('--dryrun', action='store_true', help='Enable debug output (no execution)')
 args = parser.parse_args()
+#---------------------------------------------------------------------------------------------
 
 ## Configuration for each Run
 config = {
@@ -61,17 +66,15 @@ scram_arch = config[run]["arch"]
 cmssw_version = config[run]["cmssw"]
 queue = "local"
 
-# Perform Environment Checks
-if not dryrun:
-    check_environment(scram_arch, cmssw_version)
+## Perform Environment Checks
+if not dryrun: check_environment(scram_arch, cmssw_version)
 
 ## Paths
-# Force the logical EOS user path, overriding Python's symlink resolution
+## Force the logical EOS user path, overriding Python's symlink resolution
 basedir = os.getcwd()
 basedir = re.sub(r"^/eos/home-([a-z0-9])/", r"/eos/user/\1/", basedir)
-
-mg5dir = os.path.join(basedir, run, "genproductions/bin/MadGraph5_aMCatNLO")
-user = os.environ["USER"]
+mg5dir  = os.path.join(basedir, run, "genproductions/bin/MadGraph5_aMCatNLO")
+user    = os.environ["USER"]
 dumpdir = f"/eos/user/{user[0]}/{user}/VLLgridpacks_{run}"
 if not dryrun: os.system(f"mkdir -p {dumpdir}")
 
