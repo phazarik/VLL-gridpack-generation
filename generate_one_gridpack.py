@@ -119,7 +119,12 @@ if not os.path.isdir(carddir):
     print(f"\033[31m!! Card directory not found: {carddir}\033[0m")
     exit(1)
 
-command = f"./gridpack_generation.sh {name} {carddir} {queue} ALL {scram_arch} {cmssw_version}"
+exec_script = os.path.join(mg5dir, "gridpack_generation.sh")
+if not os.access(exec_script, os.X_OK):
+    print(f">> Fixing permissions for gridpack_generation.sh...")
+    os.chmod(exec_script, 0o755)
+
+command = f"{exec_script} {name} {carddir} {queue} ALL {scram_arch} {cmssw_version}"
 print(f">> \033[33;3m{command}\033[0m\n")
 
 if dryrun:
