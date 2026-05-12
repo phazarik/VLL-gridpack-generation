@@ -126,14 +126,15 @@ if dryrun:
     print("\033[93m[DRY RUN] Mode enabled: generation command skipped.\033[0m")
     exit(0)
 
-# Main Execution: Inject the logical PWD so the bash script sees the safe /eos/user/ path
-run_env = os.environ.copy()
-run_env["PWD"] = mg5dir
-result = subprocess.run(command, shell=True, env=run_env)
-
-end_gen = time.time()
-gen_duration = timedelta(seconds=int(end_gen - start_gen))
-print(f"Generation time taken: {str(gen_duration)}")
+## Main Execution: run in a completely clean environment
+clean_env = {
+    "HOME": os.environ["HOME"],
+    "USER": os.environ["USER"],
+    "LOGNAME": os.environ["LOGNAME"],
+    "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+    "PWD": mg5dir
+}
+result = subprocess.run(command, shell=True, cwd=mg5dir, env=clean_env)
 
 #---------------------------------------------------------------------------------------------
 ## Managing outputs
