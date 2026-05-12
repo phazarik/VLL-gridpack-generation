@@ -38,12 +38,12 @@ Gridpack generation using one script:
 python3 generate_one_gridpack.py --run [Run3/Run2UL] --name VLLS_ele_M115 [--dryrun]
 ```
 ### Notes
-This setup works with the following CMSSW versions and SCRAM ARCH
+This setup works with the following CMSSW versions and SCRAM ARCH. Make sure to run this in the compatible `lxplus` version.
 
 | Run  | SCRAM_ARCH          | CMSSW version   |
 |------|---------------------|-----------------|
-| Run2 | `el8_amd64_gcc12`   | `CMSSW_13_0_13` |
-| Run3 | `slc7_amd64_gcc700` | `CMSSW_10_6_26` |
+| Run2 | `slc7_amd64_gcc700` | `CMSSW_10_6_26` |
+| Run3 | `el8_amd64_gcc12`   | `CMSSW_13_0_13` |
 
 For low mass points (e.g., M=100 GeV), certain decay chains like VLL -> Higgs + lepton may not be kinematically allowed if the Higgs is on-shell (Mh ~ 125 GeV). MadGraph may fail during the compilation of these subprocesses. It is recommended to skip these points or modify the decay logic if they are not critical. Ensure that the BSM model (`VLL.tgz`) is available in the central [cms-project-generators](https://cms-project-generators.web.cern.ch/cms-project-generators/) repository or correctly referenced in the `extramodels.dat` card.
 
