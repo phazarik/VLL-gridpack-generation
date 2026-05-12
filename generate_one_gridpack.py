@@ -135,6 +135,9 @@ clean_env = {
     "PWD": mg5dir
 }
 result = subprocess.run(command, shell=True, cwd=mg5dir, env=clean_env)
+end_gen = time.time()
+gen_duration = timedelta(seconds=int(end_gen - start_gen))
+print(f"Generation time taken: {str(gen_duration)}")
 
 #---------------------------------------------------------------------------------------------
 ## Managing outputs
