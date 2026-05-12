@@ -11,7 +11,13 @@ This repository contains a suite of automation tools and templates for generatin
 | Run  | SCRAM_ARCH          | CMSSW version   |
 |------|---------------------|-----------------|
 | Run2 | `slc7_amd64_gcc700` | `CMSSW_10_6_26` |
-| Run3 | `el8_amd64_gcc12`   | `CMSSW_13_0_13` |
+| Run3 | `el8_amd64_gcc11`   | `CMSSW_13_0_13` |
+
+One useful trick is to use containers for `el8` and `slc7` from the default `el9` by doing the following.
+```bash
+cmssw-el8 ## container for lxplus8
+cmssw-el7 ## container for lxplus7
+```
 
 ### Directory Structure
 ```

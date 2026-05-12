@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------------
 # Script: generate_one_gridpack.py
 # Purpose: Executes the gridpack_generation.sh script for a specific mass point.
-#          Handles cleanup and moves the final tarball to EOS.
+#          Handles cleanup, moves the final tarball to EOS, and validates environment.
 # Usage: python3 generate_one_gridpack.py --run Run3 --name VLLS_ele_M115
 # -------------------------------------------------------------------------------------
 
@@ -9,7 +9,38 @@ import os
 import subprocess
 import argparse
 import time
+import re
 from datetime import timedelta
+
+def check_environment(scram_arch, cmssw_version):
+    print(f"\033[93m\n==> Checking environment and CMSSW release...\033[0m")
+    
+    # 1. Verify Host OS matches SCRAM_ARCH
+    req_os = scram_arch.split('_')[0]
+    try:
+        with open('/etc/os-release', 'r') as f:
+            os_release = f.read()
+            
+        if 'VERSION_ID="9' in os_release or 'VERSION="9' in os_release: host_os = 'el9'
+        elif 'VERSION_ID="8' in os_release or 'VERSION="8' in os_release: host_os = 'el8'
+        elif 'VERSION_ID="7' in os_release or 'VERSION="7' in os_release: host_os = 'slc7'
+        else: host_os = 'unknown'
+
+        if req_os != host_os and host_os != 'unknown':
+            print(f"\033[31m!! ERROR: OS mismatch! You are trying to use SCRAM_ARCH '{req_os}' on a host with '{host_os}'.\033[0m")
+            print(f"\033[33m   Please start a container (e.g., run `cmssw-{req_os}`) or log into a compatible machine (e.g., lxplus8).\033[0m")
+            exit(1)
+    except Exception as e:
+        print(f"\033[33m>> Warning: Could not verify host OS compatibility ({e}). Proceeding anyway...\033[0m")
+
+    # 2. Verify CMSSW release exists for the given SCRAM_ARCH in CVMFS
+    cmssw_path = f"/cvmfs/cms.cern.ch/{scram_arch}/cms/cmssw/{cmssw_version}"
+    if not os.path.exists(cmssw_path):
+        print(f"\033[31m!! ERROR: Release {cmssw_version} is not available for architecture {scram_arch}.\033[0m")
+        print(f"\033[33m   Checked path: {cmssw_path}\033[0m")
+        exit(1)
+        
+    print(f"\033[92m>> Environment checks passed. OS is compatible and CMSSW release found.\033[0m")
 
 parser = argparse.ArgumentParser(description="Generate a single VLL gridpack.")
 parser.add_argument('--name', required=True, help='Name of the gridpack (e.g. VLLS_ele_M115)')
@@ -19,7 +50,7 @@ args = parser.parse_args()
 
 ## Configuration for each Run
 config = {
-    "Run3":   {"arch": "el8_amd64_gcc12",   "cmssw": "CMSSW_13_0_13"},
+    "Run3":   {"arch": "el8_amd64_gcc11",   "cmssw": "CMSSW_13_0_13"},
     "Run2UL": {"arch": "slc7_amd64_gcc700", "cmssw": "CMSSW_10_6_26"}
 }
 
@@ -30,8 +61,15 @@ scram_arch = config[run]["arch"]
 cmssw_version = config[run]["cmssw"]
 queue = "local"
 
+# Perform Environment Checks
+if not dryrun:
+    check_environment(scram_arch, cmssw_version)
+
 ## Paths
+# Force the logical EOS user path, overriding Python's symlink resolution
 basedir = os.getcwd()
+basedir = re.sub(r"^/eos/home-([a-z0-9])/", r"/eos/user/\1/", basedir)
+
 mg5dir = os.path.join(basedir, run, "genproductions/bin/MadGraph5_aMCatNLO")
 user = os.environ["USER"]
 dumpdir = f"/eos/user/{user[0]}/{user}/VLLgridpacks_{run}"
@@ -54,7 +92,7 @@ for entry in os.listdir(mg5dir):
         else:
             target = os.path.join(tempdir, entry)
             command = f"mv {path} {target}"
-            command2 = f"mv {mg5dir}/*log {tempdir} 2>/dev/null" # added stderr redirect for cleaner logs
+            command2 = f"mv {mg5dir}/*log {tempdir} 2>/dev/null"
             print(f">> \033[33;3m{command}\033[0m")
             print(f">> \033[33;3m{command2}\033[0m")
             if not dryrun:
@@ -85,8 +123,10 @@ if dryrun:
     print("\033[93m[DRY RUN] Mode enabled: generation command skipped.\033[0m")
     exit(0)
 
-# Main Execution
-result = subprocess.run(command, shell=True)
+# Main Execution: Inject the logical PWD so the bash script sees the safe /eos/user/ path
+run_env = os.environ.copy()
+run_env["PWD"] = mg5dir
+result = subprocess.run(command, shell=True, env=run_env)
 
 end_gen = time.time()
 gen_duration = timedelta(seconds=int(end_gen - start_gen))
