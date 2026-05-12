@@ -1,0 +1,12 @@
+import model {model}
+define L = lp lp~
+define N = vlp vlp~
+define boson = w+ w- z h
+define lepton   = {decay_lep} #Taken from YAML
+define neutrino = {decay_nu}  #Taken from YAML
+
+generate p p > L L, (L > boson lepton)    #Pair production
+add process p p > N N, (N > boson lepton) #Pair production 
+add process p p > L N, (L > boson lepton), (N > boson lepton) #Associated production
+
+output {output_name} -nojpeg
